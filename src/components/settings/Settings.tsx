@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
+import { useRouter } from 'expo-router';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -14,10 +15,12 @@ const CURRENCIES = ['USD', 'ZWG', 'ZAR', 'GBP', 'EUR'];
 
 export default function Settings() {
   const { currency, setCurrency, reset } = useExpenses();
-  const { account, signOut } = useAuth();
+  const { account, signOut, resetAccount } = useAuth();
   const theme = useTheme();
+  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [forgetting, setForgetting] = useState(false);
 
   return (
     <ScrollScreen>
@@ -39,7 +42,14 @@ export default function Settings() {
           <Text style={[styles.label, { color: theme.mute }]}>Account</Text>
           <Text style={[styles.who, { color: theme.ink }]}>{account.name}</Text>
           <Text style={[styles.mute, { color: theme.mute }]}>{account.email}</Text>
+          <Button
+            label="Change password"
+            variant="ghost"
+            onPress={() => router.push('/change-password')}
+          />
           <Button label="Sign out" variant="ghost" onPress={() => setSigningOut(true)} />
+          <Text style={[styles.foot, { color: theme.mute }]}>Forgot your password?</Text>
+          <Button label="Reset account" variant="danger" onPress={() => setForgetting(true)} />
         </Card>
       ) : null}
 
@@ -61,11 +71,26 @@ export default function Settings() {
           title="Sign out?"
           text="You will need your email and password to get back in."
           confirmLabel="Sign out"
+          cancelLabel="Stay"
           onConfirm={() => {
             setSigningOut(false);
             void signOut();
           }}
           onCancel={() => setSigningOut(false)}
+        />
+      ) : null}
+
+      {forgetting ? (
+        <ConfirmDialog
+          title="Reset your account?"
+          text="Your password cannot be recovered, so the account is removed and you create a new one with the same email. Your transactions and categories are kept."
+          confirmLabel="Reset"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            setForgetting(false);
+            void resetAccount();
+          }}
+          onCancel={() => setForgetting(false)}
         />
       ) : null}
     </ScrollScreen>
@@ -76,4 +101,5 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, marginBottom: 6 },
   who: { fontSize: 18, fontWeight: '700', marginBottom: 2 },
   mute: { fontSize: 15, marginBottom: 16 },
+  foot: { fontSize: 13, marginBottom: 8 },
 });

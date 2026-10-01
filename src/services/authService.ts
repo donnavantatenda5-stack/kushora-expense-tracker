@@ -53,6 +53,24 @@ export async function writeSession(email: string | null): Promise<void> {
 
 export type AuthResult = { ok: true; account: Account } | { ok: false; error: string };
 
+/**
+ * Writes a new salt+digest pair onto the account and returns what was stored.
+ *
+ * The salt is regenerated rather than reused so two passwords for the same
+ * account never share a digest input. The caller gets back the exact record
+ * that landed on disk, so React state cannot drift from storage.
+ */
+async function saveCredentials(account: Account, password: string): Promise<Account | null> {
+  const salt = newSalt();
+  const next: Account = { ...account, salt, digest: hashPassword(password, salt) };
+  try {
+    await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(next));
+    return next;
+  } catch {
+    return null;
+  }
+}
+
 export async function createAccount(
   name: string,
   email: string,
@@ -102,4 +120,51 @@ export async function verifyAccount(email: string, password: string): Promise<Au
 
   await writeSession(id);
   return { ok: true, account };
+}
+
+/**
+ * Replaces the password after checking the current one.
+ *
+ * The account on disk is the only source of truth here, so the current password
+ * is verified against it rather than against anything the caller passes back in.
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<AuthResult> {
+  const account = await readAccount();
+
+  if (!account) return { ok: false, error: 'No account on this device yet. Create one first.' };
+  if (!safeEqual(hashPassword(currentPassword, account.salt), account.digest)) {
+    return { ok: false, error: 'Current password is incorrect.' };
+  }
+  if (newPassword.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' };
+  if (currentPassword === newPassword) {
+    return { ok: false, error: 'New password must be different from the current one.' };
+  }
+
+  const saved = await saveCredentials(account, newPassword);
+  if (!saved) return { ok: false, error: 'Could not save the account on this device.' };
+  return { ok: true, account: saved };
+}
+
+/**
+ * Drops the account record so a new one can be created with the same email.
+ *
+ * This is the closest thing to a forgotten-password reset that a backendless app
+ * can offer: there is no email to send a recovery link to, so the only way back
+ * in is to remove the stored digest and re-register. Anyone holding the unlocked
+ * device can do it, which is the same trust boundary the whole account has.
+ *
+ * The expense keys (et_tx, et_cats, et_cur, et_trash) are deliberately left
+ * alone: the account is only a local gate, so clearing it should not throw away
+ * the user's transactions.
+ */
+export async function resetAccount(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(ACCOUNT_KEY);
+  } catch {
+    /* nothing recoverable to do; the caller redirects to sign-in regardless */
+  }
+  await writeSession(null);
 }

@@ -74,7 +74,7 @@ export default function SignInScreen() {
                 label="Name"
                 value={name}
                 onChangeText={setName}
-                placeholder="How should we greet you?"
+                placeholder="Enter your name"
                 autoCapitalize="words"
                 autoComplete="name"
                 returnKeyType="next"

@@ -35,7 +35,7 @@ function AuthRedirect() {
  * underneath. That matters for the web target, because `web.output` is "server"
  * and every route is prerendered. A gate that swapped the tree for the splash
  * would make the server, where neither read can ever settle, emit splash-only
- * HTML for all 13 routes, and the client would then sit behind the splash until
+ * HTML for every route, and the client would then sit behind the splash until
  * it had hydrated.
  */
 function Gate({ children }: { children: React.ReactNode }) {
@@ -122,6 +122,7 @@ export default function RootLayout() {
                     name="deleted"
                     options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
                   />
+                  <Stack.Screen name="change-password" />
                 </Stack>
               </Gate>
             </ExpenseProvider>

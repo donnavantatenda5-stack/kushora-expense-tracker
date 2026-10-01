@@ -7,12 +7,15 @@ export default function ConfirmDialog({
   title,
   text,
   confirmLabel = 'Delete',
+  cancelLabel = 'Keep it',
   onConfirm,
   onCancel,
 }: {
   title: string;
   text: string;
   confirmLabel?: string;
+  /** Overridable because "Keep it" reads wrong outside the delete flows. */
+  cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -27,7 +30,7 @@ export default function ConfirmDialog({
           <Text style={[styles.text, { color: t.mute }]}>{text}</Text>
           <View style={styles.row}>
             <Button label={confirmLabel} variant="danger" onPress={onConfirm} style={styles.grow} />
-            <Button label="Keep it" variant="ghost" onPress={onCancel} style={styles.grow} />
+            <Button label={cancelLabel} variant="ghost" onPress={onCancel} style={styles.grow} />
           </View>
         </View>
       </View>
