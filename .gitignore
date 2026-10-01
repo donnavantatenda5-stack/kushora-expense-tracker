@@ -1,0 +1,19 @@
+node_modules/
+.expo/
+dist/
+web-build/
+# one-off export experiments: build output, regenerable with npm run export:server
+/dist-check/
+/dist-check-ios/
+/dist-check-*/
+/dist-server/
+/dist-web/
+expo-env.d.ts
+*.log
+*.err
+.env
+.env*.local
+*.tsbuildinfo
+.DS_Store
+/ios
+/android
