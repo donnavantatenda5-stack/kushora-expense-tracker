@@ -133,7 +133,13 @@ const styles = StyleSheet.create({
   tagline: { fontSize: 15 },
   card: { borderWidth: 1, borderRadius: 16, padding: 16 },
   title: { fontSize: 18, fontWeight: '700', marginBottom: 14 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
   switchText: { fontSize: 14 },
   foot: { fontSize: 13, textAlign: 'center' },
 });
