@@ -6,6 +6,8 @@ export interface Account {
   name: string;
   /** Login id, always stored lowercased and trimmed. */
   email: string;
+  /** Birth date used as an account recovery check. */
+  birthday?: string;
   salt: string;
   digest: string;
   createdAt: string;
@@ -15,6 +17,32 @@ const ACCOUNT_KEY = 'et_account';
 const SESSION_KEY = 'et_session';
 
 export const normalizeEmail = (email: string): string => email.trim().toLowerCase();
+
+export function normalizeBirthday(value: string): string | null {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (!match) return null;
+
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  const year = Number(match[3]);
+
+  if (!Number.isFinite(month) || !Number.isFinite(day) || !Number.isFinite(year)) return null;
+
+  const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const parsed = new Date(`${iso}T00:00:00`);
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() + 1 !== month ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return iso;
+}
 
 async function readJson<T>(key: string): Promise<T | null> {
   try {
@@ -30,6 +58,11 @@ export async function readAccount(): Promise<Account | null> {
   if (!account || typeof account.digest !== 'string' || typeof account.salt !== 'string') {
     return null;
   }
+
+  if (account.birthday && !normalizeBirthday(account.birthday)) {
+    return null;
+  }
+
   return account;
 }
 
@@ -57,12 +90,15 @@ export async function createAccount(
   name: string,
   email: string,
   password: string,
+  birthday: string,
 ): Promise<AuthResult> {
   const cleanName = name.trim();
   const id = normalizeEmail(email);
+  const normalizedBirthday = normalizeBirthday(birthday);
 
   if (cleanName.length < 2) return { ok: false, error: 'Enter your name.' };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id)) return { ok: false, error: 'Enter a valid email address.' };
+  if (!normalizedBirthday) return { ok: false, error: 'Use your birthday as MM/DD/YYYY.' };
   if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' };
 
   if (await readAccount()) {
@@ -73,6 +109,7 @@ export async function createAccount(
   const account: Account = {
     name: cleanName,
     email: id,
+    birthday: normalizedBirthday,
     salt,
     // Off the render path, and the loop is deliberately expensive.
     digest: hashPassword(password, salt),
@@ -102,4 +139,53 @@ export async function verifyAccount(email: string, password: string): Promise<Au
 
   await writeSession(id);
   return { ok: true, account };
+}
+
+export async function resetPassword(
+  name: string,
+  birthday: string,
+  newPassword: string,
+): Promise<AuthResult> {
+  const account = await readAccount();
+  const normalizedName = name.trim();
+  const normalizedBirthday = normalizeBirthday(birthday);
+
+  if (!account) {
+    return { ok: false, error: 'No account on this device yet. Create one first.' };
+  }
+  if (!account.birthday) {
+    return { ok: false, error: 'This account was created before birthday recovery was enabled.' };
+  }
+  if (!normalizedBirthday) {
+    return { ok: false, error: 'Use your birthday as MM/DD/YYYY.' };
+  }
+  if (normalizedName.length < 2) {
+    return { ok: false, error: 'Enter your name.' };
+  }
+  if (newPassword.length < 6) {
+    return { ok: false, error: 'Password must be at least 6 characters.' };
+  }
+
+  const nameMatches = account.name.trim().toLowerCase() === normalizedName.toLowerCase();
+  const birthdayMatches = account.birthday === normalizedBirthday;
+  if (!nameMatches || !birthdayMatches) {
+    return { ok: false, error: 'Name or birthday does not match the saved account.' };
+  }
+
+  const salt = newSalt();
+  const updated: Account = {
+    ...account,
+    salt,
+    digest: hashPassword(newPassword, salt),
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(updated));
+  } catch {
+    return { ok: false, error: 'Could not save the new password on this device.' };
+  }
+
+  await writeSession(account.email);
+  return { ok: true, account: updated };
 }

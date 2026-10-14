@@ -18,17 +18,18 @@ import { useTheme } from '@/theme';
 export default function SignInScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
 
-  const [mode, setMode] = useState<'in' | 'up'>('in');
+  const [mode, setMode] = useState<'in' | 'up' | 'reset'>('in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [birthday, setBirthday] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
   const swap = () => {
-    setMode((m) => (m === 'in' ? 'up' : 'in'));
+    setMode((m) => (m === 'in' ? 'up' : m === 'up' ? 'reset' : 'in'));
     setError(undefined);
   };
 
@@ -36,11 +37,24 @@ export default function SignInScreen() {
     if (busy) return;
     setBusy(true);
     setError(undefined);
-    // The redirect in the root layout takes over once the status flips.
-    const message =
-      mode === 'in' ? await signIn(email, password) : await signUp(name, email, password);
+
+    let message: string | null;
+    if (mode === 'in') {
+      message = await signIn(email, password);
+    } else if (mode === 'up') {
+      message = await signUp(name, email, password, birthday);
+    } else {
+      message = await resetPassword(name, birthday, password);
+    }
+
     setError(message ?? undefined);
     setBusy(false);
+    if (!message) {
+      setName('');
+      setEmail('');
+      setBirthday('');
+      setPassword('');
+    }
   };
 
   return (
@@ -66,54 +80,96 @@ export default function SignInScreen() {
 
           <View style={[styles.card, { backgroundColor: t.card, borderColor: t.line }]}>
             <Text style={[styles.title, { color: t.ink }]}>
-              {mode === 'in' ? 'Sign in' : 'Create your account'}
+              {mode === 'in'
+                ? 'Sign in'
+                : mode === 'up'
+                  ? 'Create your account'
+                  : 'Reset your password'}
             </Text>
 
-            {mode === 'up' ? (
+            {(mode === 'up' || mode === 'reset') ? (
               <Input
                 label="Name"
                 value={name}
                 onChangeText={setName}
-                placeholder="How should we greet you?"
+                placeholder={mode === 'up' ? 'How should we greet you?' : 'Your full name'}
                 autoCapitalize="words"
                 autoComplete="name"
                 returnKeyType="next"
               />
             ) : null}
 
-            <Input
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              keyboardType="email-address"
-              autoComplete="email"
-              returnKeyType="next"
-            />
+            {mode !== 'reset' ? (
+              <Input
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoComplete="email"
+                returnKeyType="next"
+              />
+            ) : null}
+
+            {(mode === 'up' || mode === 'reset') ? (
+              <Input
+                label="Birthday"
+                value={birthday}
+                onChangeText={setBirthday}
+                placeholder="MM/DD/YYYY"
+                keyboardType="numeric"
+                autoComplete="birthdate-full"
+                returnKeyType="next"
+                maxLength={10}
+              />
+            ) : null}
 
             <Input
-              label="Password"
+              label={mode === 'reset' ? 'New password' : 'Password'}
               value={password}
               onChangeText={setPassword}
-              placeholder={mode === 'up' ? 'At least 6 characters' : 'Your password'}
+              placeholder={
+                mode === 'up'
+                  ? 'At least 6 characters'
+                  : mode === 'reset'
+                    ? 'Choose a new password'
+                    : 'Your password'
+              }
               secureTextEntry
-              autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
+              autoComplete={mode === 'up' ? 'new-password' : mode === 'reset' ? 'new-password' : 'current-password'}
               returnKeyType="go"
               onSubmitEditing={submit}
               error={error}
             />
 
             <Button
-              label={mode === 'in' ? 'Sign in' : 'Create account'}
+              label={mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Update password'}
               onPress={submit}
               disabled={busy}
             />
+
             <View style={styles.switchRow}>
               <Text style={[styles.switchText, { color: t.mute }]}>
-                {mode === 'in' ? 'No account yet?' : 'Already have an account?'}
+                {mode === 'in' ? 'No account yet?' : mode === 'up' ? 'Already have an account?' : 'Remembered it?'}
               </Text>
-              <Button label={mode === 'in' ? 'Create one' : 'Sign in'} variant="ghost" onPress={swap} />
+              <Button
+                label={mode === 'in' ? 'Create one' : mode === 'up' ? 'Sign in' : 'Back to sign in'}
+                variant="ghost"
+                onPress={swap}
+              />
             </View>
+
+            {mode !== 'reset' ? (
+              <Button
+                label="Reset password"
+                variant="ghost"
+                compact
+                onPress={() => {
+                  setMode('reset');
+                  setError(undefined);
+                }}
+              />
+            ) : null}
           </View>
 
           <Text style={[styles.foot, { color: t.mute }]}>

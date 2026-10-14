@@ -1,5 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createAccount, readAccount, readSession, verifyAccount, writeSession, type Account } from '../services/authService';
+import {
+  createAccount,
+  readAccount,
+  readSession,
+  resetPassword,
+  verifyAccount,
+  writeSession,
+  type Account,
+} from '../services/authService';
 
 export type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 
@@ -8,7 +16,8 @@ export interface AuthContextValue {
   account: Account | null;
   /** Resolves to an error message, or null on success. */
   signIn: (email: string, password: string) => Promise<string | null>;
-  signUp: (name: string, email: string, password: string) => Promise<string | null>;
+  signUp: (name: string, email: string, password: string, birthday: string) => Promise<string | null>;
+  resetPassword: (name: string, birthday: string, newPassword: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
 
@@ -46,8 +55,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
-  const signUp = useCallback(async (name: string, email: string, password: string) => {
-    const result = await createAccount(name, email, password);
+  const signUp = useCallback(async (name: string, email: string, password: string, birthday: string) => {
+    const result = await createAccount(name, email, password, birthday);
+    if (!result.ok) return result.error;
+    setAccount(result.account);
+    setStatus('signedIn');
+    return null;
+  }, []);
+
+  const resetUserPassword = useCallback(async (name: string, birthday: string, newPassword: string) => {
+    const result = await resetPassword(name, birthday, newPassword);
     if (!result.ok) return result.error;
     setAccount(result.account);
     setStatus('signedIn');
@@ -61,8 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, account, signIn, signUp, signOut }),
-    [status, account, signIn, signUp, signOut],
+    () => ({ status, account, signIn, signUp, resetPassword: resetUserPassword, signOut }),
+    [status, account, signIn, signUp, resetUserPassword, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

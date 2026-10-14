@@ -21,9 +21,13 @@ function AuthRedirect() {
   const segments = useSegments();
 
   if (status === 'loading') return null;
-  const onSignIn = segments[0] === 'sign-in';
-  if (status === 'signedOut' && !onSignIn) return <Redirect href="/sign-in" />;
-  if (status === 'signedIn' && onSignIn) return <Redirect href="/(tabs)" />;
+
+  const firstSegment = segments[0];
+  const onSignIn = firstSegment === 'sign-in';
+  const isRoot = !firstSegment;
+
+  if (status === 'signedOut' && (!onSignIn || isRoot)) return <Redirect href="/sign-in" />;
+  if (status === 'signedIn' && (onSignIn || isRoot)) return <Redirect href="/(tabs)" />;
   return null;
 }
 
