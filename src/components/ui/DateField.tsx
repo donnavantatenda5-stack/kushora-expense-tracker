@@ -9,11 +9,13 @@ export default function DateField({
   value,
   onChange,
   error,
+  placeholder = 'Choose a date',
 }: {
   label: string;
   value: string;
   onChange: (next: string) => void;
   error?: string;
+  placeholder?: string;
 }) {
   const t = useTheme();
   const [open, setOpen] = useState(false);
@@ -34,10 +36,12 @@ export default function DateField({
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${dateLabel(current)}`}
+        accessibilityLabel={`${label}: ${value ? dateLabel(current) : placeholder}`}
         style={[styles.box, { backgroundColor: t.card, borderColor: error ? t.exp : t.line }]}
       >
-        <Text style={[styles.value, { color: t.ink }]}>{dateLabel(current)}</Text>
+        <Text style={[styles.value, { color: value ? t.ink : t.mute }]}>
+          {value ? dateLabel(current) : placeholder}
+        </Text>
       </Pressable>
       {open ? (
         <DateTimePicker

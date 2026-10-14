@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   createAccount,
+  clearLocalAccount,
   readAccount,
   readSession,
   resetPassword,
@@ -19,6 +20,7 @@ export interface AuthContextValue {
   signUp: (name: string, email: string, password: string, birthday: string) => Promise<string | null>;
   resetPassword: (name: string, birthday: string, newPassword: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  resetAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -77,9 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signedOut');
   }, []);
 
+  const resetAccount = useCallback(async () => {
+    await clearLocalAccount();
+    setAccount(null);
+    setStatus('signedOut');
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ status, account, signIn, signUp, resetPassword: resetUserPassword, signOut }),
-    [status, account, signIn, signUp, resetUserPassword, signOut],
+    () => ({ status, account, signIn, signUp, resetPassword: resetUserPassword, signOut, resetAccount }),
+    [status, account, signIn, signUp, resetUserPassword, signOut, resetAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

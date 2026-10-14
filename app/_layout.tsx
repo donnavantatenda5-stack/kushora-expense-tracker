@@ -58,21 +58,30 @@ function Gate({ children }: { children: React.ReactNode }) {
   }, []);
 
   const settled = ready && status !== 'loading';
-  if (!settled || !splashDone) {
-    return <Splash />;
-  }
+  const showSplash = !settled || !splashDone;
+
   // "auto" would follow the OS scheme rather than the palette the user picked.
   return (
-    <>
-      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
-      <AuthRedirect />
+    <View style={styles.container}>
       {children}
-    </>
+      {showSplash ? (
+        <View style={styles.splashOverlay}>
+          <Splash />
+        </View>
+      ) : (
+        <>
+          <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+          <AuthRedirect />
+        </>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gate: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  gate: { flex: 1 },
+  container: { flex: 1 },
+  splashOverlay: StyleSheet.absoluteFill,
 });
 
 export default function RootLayout() {

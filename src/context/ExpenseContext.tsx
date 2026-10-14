@@ -33,6 +33,7 @@ export interface ExpenseContextValue {
   addCategory: (cat: CustomCategory) => void;
   removeCategory: (cat: CustomCategory) => void;
   reset: () => void;
+  clearAll: () => void;
   /** False until AsyncStorage has been read; render a splash/loader first. */
   ready: boolean;
 }
@@ -98,6 +99,13 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
       removeCategory: (cat) =>
         setCustom((list) => list.filter((x) => !(x.name === cat.name && x.type === cat.type))),
       reset: () => setTransactions(sample.map((t) => ({ ...t }))),
+      clearAll: () => {
+        setTransactions([]);
+        setCustom([]);
+        setCurrency('USD');
+        setTrash([]);
+        setChat([]);
+      },
       ready: txReady && catReady && curReady && trashReady,
     }),
     [

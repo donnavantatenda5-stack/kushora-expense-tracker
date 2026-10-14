@@ -84,6 +84,10 @@ export async function writeSession(email: string | null): Promise<void> {
   }
 }
 
+export async function clearLocalAccount(): Promise<void> {
+  await AsyncStorage.multiRemove([ACCOUNT_KEY, SESSION_KEY]);
+}
+
 export type AuthResult = { ok: true; account: Account } | { ok: false; error: string };
 
 export async function createAccount(

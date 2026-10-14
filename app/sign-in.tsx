@@ -10,15 +10,19 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import Button from '@/components/ui/Button';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import DateField from '@/components/ui/DateField';
 import Input from '@/components/ui/Input';
 import Logo from '@/components/ui/Logo';
 import { useAuth } from '@/context/AuthContext';
+import { useExpenseContext } from '@/context/ExpenseContext';
 import { useTheme } from '@/theme';
 
 export default function SignInScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, resetPassword, resetAccount } = useAuth();
+  const { clearAll } = useExpenseContext();
 
   const [mode, setMode] = useState<'in' | 'up' | 'reset'>('in');
   const [name, setName] = useState('');
@@ -27,6 +31,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const swap = () => {
     setMode((m) => (m === 'in' ? 'up' : m === 'up' ? 'reset' : 'in'));
@@ -39,12 +44,15 @@ export default function SignInScreen() {
     setError(undefined);
 
     let message: string | null;
+    const authBirthday = birthday
+      ? `${birthday.slice(5, 7)}/${birthday.slice(8, 10)}/${birthday.slice(0, 4)}`
+      : '';
     if (mode === 'in') {
       message = await signIn(email, password);
     } else if (mode === 'up') {
-      message = await signUp(name, email, password, birthday);
+      message = await signUp(name, email, password, authBirthday);
     } else {
-      message = await resetPassword(name, birthday, password);
+      message = await resetPassword(name, authBirthday, password);
     }
 
     setError(message ?? undefined);
@@ -54,6 +62,27 @@ export default function SignInScreen() {
       setEmail('');
       setBirthday('');
       setPassword('');
+    }
+  };
+
+  const resetApp = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await resetAccount();
+      clearAll();
+      t.setName('white');
+      setName('');
+      setEmail('');
+      setBirthday('');
+      setPassword('');
+      setMode('up');
+      setConfirmReset(false);
+    } catch {
+      setError('Could not reset the app on this device.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -112,15 +141,11 @@ export default function SignInScreen() {
             ) : null}
 
             {(mode === 'up' || mode === 'reset') ? (
-              <Input
+              <DateField
                 label="Birthday"
                 value={birthday}
-                onChangeText={setBirthday}
-                placeholder="MM/DD/YYYY"
-                keyboardType="numeric"
-                autoComplete="birthdate-full"
-                returnKeyType="next"
-                maxLength={10}
+                onChange={setBirthday}
+                placeholder="Select your birthday"
               />
             ) : null}
 
@@ -147,6 +172,15 @@ export default function SignInScreen() {
               onPress={submit}
               disabled={busy}
             />
+
+            {mode === 'reset' ? (
+              <Button
+                label="Reset app and start over"
+                variant="danger"
+                onPress={() => setConfirmReset(true)}
+                disabled={busy}
+              />
+            ) : null}
 
             <View style={styles.switchRow}>
               <Text style={[styles.switchText, { color: t.mute }]}>
@@ -175,6 +209,15 @@ export default function SignInScreen() {
           <Text style={[styles.foot, { color: t.mute }]}>
             Your account and transactions stay on this device only.
           </Text>
+          {confirmReset ? (
+            <ConfirmDialog
+              title="Reset this app?"
+              text="This deletes the saved account, transactions, categories, and preferences from this device. You can then create a new account."
+              confirmLabel="Delete all data"
+              onConfirm={resetApp}
+              onCancel={() => setConfirmReset(false)}
+            />
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
